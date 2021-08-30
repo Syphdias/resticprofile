@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"time"
+	"strings"
 
 	"github.com/creativeprojects/resticprofile/constants"
 	"github.com/spf13/pflag"
@@ -30,6 +31,7 @@ type commandLineFlags struct {
 	isChild     bool
 	parentPort  int
 	noPriority  bool
+	run         string
 }
 
 // loadFlags loads command line flags (before any command)
@@ -58,6 +60,7 @@ func loadFlags() (*pflag.FlagSet, commandLineFlags) {
 	flagset.StringVarP(&flags.name, "name", "n", constants.DefaultProfileName, "profile name")
 	flagset.StringVarP(&flags.logFile, "log", "l", "", "logs into a file instead of the console")
 	flagset.BoolVar(&flags.dryRun, "dry-run", false, "display the restic commands instead of running them")
+	flagset.StringVarP(&flags.run, "run", "r", "", "profile name and command in one. This overrides --name Example: default.check")
 
 	flagset.BoolVar(&flags.noLock, "no-lock", false, "skip profile lock file")
 	flagset.DurationVar(&flags.lockWait, "lock-wait", 0, "wait up to duration to acquire a lock (syntax \"1h5m30s\")")
@@ -87,6 +90,19 @@ func loadFlags() (*pflag.FlagSet, commandLineFlags) {
 
 	// remaining flags
 	flags.resticArgs = flagset.Args()
+
+	if flags.run != "" {
+		// split at dot
+		run_parts := strings.Split(flags.run, ".")
+		// override name arg
+		flags.name = run_parts[0]
+		// prepend set override name args
+		if len(flags.resticArgs) > 0 {
+			flags.resticArgs = append([]string{run_parts[1]}, flags.resticArgs...)
+		} else {
+			flags.resticArgs = run_parts[1:2]
+		}
+	}
 
 	return flagset, flags
 }
